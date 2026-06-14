@@ -1,0 +1,37 @@
+.stack {
+  display: grid;
+  gap: var(--grid-gap-lg);
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.field-label {
+  color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.inline-error {
+  margin: 0;
+  color: var(--color-danger-ink);
+}
+
+.muted {
+  color: var(--color-text-subtle);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
