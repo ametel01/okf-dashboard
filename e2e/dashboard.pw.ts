@@ -17,6 +17,13 @@ test.describe("OKF Dashboard rendered UI", () => {
 
     await expect(page.getByRole("heading", { name: "minimal-okf" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Bundle Summary" })).toBeVisible();
+    await page.getByRole("button", { exact: true, name: "Reload" }).click();
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("status")
+        .filter({ hasText: /Bundle reloaded at/u }),
+    ).toBeVisible();
     await expect(page.locator(".metric-label").filter({ hasText: "Markdown Files" })).toBeVisible();
     await expect(page.getByLabel("Type distribution donut chart")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Knowledge Graph" })).toBeVisible();

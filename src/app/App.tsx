@@ -62,6 +62,7 @@ const initialAppState: AppState = {
 const DIRECTORY_INPUT_PROPS = { directory: "", webkitdirectory: "" };
 type MatchLabel = { conceptId: string; label: string };
 const EMPTY_MATCH_LABELS: MatchLabel[] = [];
+type ReloadNotice = { tone: "success" | "warning" | "danger"; message: string };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -96,9 +97,12 @@ export default function App() {
     initialAppState,
   );
   const browserReloadRef = useRef<(() => Promise<BundleSnapshot>) | undefined>();
+  const [reloading, setReloading] = useState(false);
+  const [reloadNotice, setReloadNotice] = useState<ReloadNotice | undefined>();
   const navigate = useNavigate();
 
   async function chooseLocalFolder() {
+    setReloadNotice(undefined);
     dispatch({ type: "startLoading" });
     try {
       const loaded = await loadBrowserDirectoryBundle();
@@ -119,6 +123,7 @@ export default function App() {
 
   async function loadSelectedFolderFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    setReloadNotice(undefined);
     dispatch({ type: "startLoading" });
     try {
       const loaded = await loadBrowserFileList(files);
@@ -134,6 +139,7 @@ export default function App() {
   }
 
   async function runLoad(source: "local" | "github") {
+    setReloadNotice(undefined);
     dispatch({ type: "startLoading" });
     try {
       const snapshot =
@@ -157,17 +163,39 @@ export default function App() {
   }
 
   async function reloadBundle() {
-    if (!bundle) return;
-    if (browserReloadRef.current) {
-      dispatch({ type: "setBundle", bundle: await browserReloadRef.current() });
-      return;
+    if (!bundle || reloading) return;
+    setReloadNotice(undefined);
+    setReloading(true);
+    try {
+      let snapshot: BundleSnapshot;
+      if (browserReloadRef.current) {
+        snapshot = await browserReloadRef.current();
+      } else if (bundle.source.type === "local") {
+        snapshot = await refreshLocalBundle(bundle.source.id, bundle.source.rootPath);
+      } else {
+        setReloadNotice({
+          tone: "warning",
+          message: "Reload is only available for local bundles in this view.",
+        });
+        return;
+      }
+      dispatch({ type: "setBundle", bundle: snapshot });
+      setReloadNotice({
+        tone: "success",
+        message: `Bundle reloaded at ${formatDate(snapshot.source.loadedAt)}.`,
+      });
+    } catch (reloadError) {
+      const message =
+        reloadError instanceof Error ? reloadError.message : "Bundle could not be reloaded.";
+      setReloadNotice({ tone: "danger", message: `Reload failed: ${message}` });
+      dispatch({ type: "loadFailed", message });
+    } finally {
+      setReloading(false);
     }
-    if (bundle.source.type !== "local") return;
-    const snapshot = await refreshLocalBundle(bundle.source.id, bundle.source.rootPath);
-    dispatch({ type: "setBundle", bundle: snapshot });
   }
 
   async function clearCache() {
+    setReloadNotice(undefined);
     await clearBundleCache(bundle?.source.id);
     if (bundle?.source.type === "local") await reloadBundle();
   }
@@ -231,12 +259,22 @@ export default function App() {
           </dl>
           <button
             className="button button-inverse"
-            disabled={!bundle || bundle.source.type !== "local"}
+            disabled={!bundle || bundle.source.type !== "local" || reloading}
             onClick={reloadBundle}
             type="button"
           >
-            <Icons.refresh aria-hidden="true" size={16} /> Reload Bundle
+            <Icons.refresh
+              aria-hidden="true"
+              className={reloading ? "spin" : undefined}
+              size={16}
+            />
+            {reloading ? "Reloading..." : "Reload Bundle"}
           </button>
+          {reloadNotice ? (
+            <output className={`reload-notice reload-notice-${reloadNotice.tone}`}>
+              {reloadNotice.message}
+            </output>
+          ) : null}
         </div>
         <div className="sidebar-footer">
           <Icons.boxes aria-hidden="true" />
@@ -269,7 +307,13 @@ export default function App() {
             />
             <Route
               element={
-                <BundleLayout bundle={bundle} onClearCache={clearCache} onReload={reloadBundle} />
+                <BundleLayout
+                  bundle={bundle}
+                  reloading={reloading}
+                  reloadNotice={reloadNotice}
+                  onClearCache={clearCache}
+                  onReload={reloadBundle}
+                />
               }
               path="/bundle/:sourceId/*"
             />
@@ -432,9 +476,17 @@ function HomePage(props: {
 
 function BundleLayout({
   bundle,
+  reloading,
+  reloadNotice,
   onReload,
   onClearCache,
-}: { bundle?: BundleSnapshot; onReload: () => void; onClearCache: () => void }) {
+}: {
+  bundle?: BundleSnapshot;
+  reloading: boolean;
+  reloadNotice?: ReloadNotice;
+  onReload: () => void;
+  onClearCache: () => void;
+}) {
   const { sourceId } = useParams();
   if (!bundle || bundle.source.id !== sourceId) return <Navigate to="/" replace />;
   return (
@@ -443,10 +495,16 @@ function BundleLayout({
         title={bundle.source.displayName ?? "OKF Bundle"}
         status={bundle.metrics.errors > 0 ? "Issues Found" : "Valid with Issues"}
         sourcePath={bundle.source.rootPath}
+        notice={reloadNotice}
         actions={
           <>
-            <button className="button" onClick={onReload} type="button">
-              <Icons.refresh aria-hidden="true" size={16} /> Reload
+            <button className="button" disabled={reloading} onClick={onReload} type="button">
+              <Icons.refresh
+                aria-hidden="true"
+                className={reloading ? "spin" : undefined}
+                size={16}
+              />
+              {reloading ? "Reloading..." : "Reload"}
             </button>
             <button
               className="button button-icon"
@@ -483,8 +541,15 @@ function PageHeader({
   title,
   status,
   sourcePath,
+  notice,
   actions,
-}: { title: string; status: string; sourcePath: string; actions?: React.ReactNode }) {
+}: {
+  title: string;
+  status: string;
+  sourcePath: string;
+  notice?: ReloadNotice;
+  actions?: React.ReactNode;
+}) {
   return (
     <header className="page-header">
       <div>
@@ -493,6 +558,9 @@ function PageHeader({
           <Badge tone={status.includes("Issue") ? "warning" : "success"}>{status}</Badge>
         </div>
         <p className="source-path">{sourcePath}</p>
+        {notice ? (
+          <output className={`reload-notice reload-notice-${notice.tone}`}>{notice.message}</output>
+        ) : null}
       </div>
       <div className="actions-row">{actions}</div>
     </header>
