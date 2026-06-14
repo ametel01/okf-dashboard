@@ -10,8 +10,10 @@ test.describe("OKF Dashboard rendered UI", () => {
   }, testInfo) => {
     test.skip(!testInfo.project.name.includes("desktop"), "Desktop layout coverage");
     await page.goto("/");
-    await page.getByLabel("Bundle root path").fill(fixturePath);
-    await page.getByRole("button", { name: "Load Local Bundle" }).click();
+    await expect(page.getByRole("button", { name: "Choose Folder" })).toBeVisible();
+    await expect(page.getByLabel("Or enter a server-readable bundle path")).toHaveValue("");
+    await page.getByLabel("Or enter a server-readable bundle path").fill(fixturePath);
+    await page.getByRole("button", { name: "Load Path" }).click();
 
     await expect(page.getByRole("heading", { name: "minimal-okf" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Bundle Summary" })).toBeVisible();
@@ -46,8 +48,10 @@ test.describe("OKF Dashboard rendered UI", () => {
   test("keeps core dashboard views usable on mobile", async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes("mobile"), "Mobile layout coverage");
     await page.goto("/");
-    await page.getByLabel("Bundle root path").fill(fixturePath);
-    await page.getByRole("button", { name: "Load Local Bundle" }).click();
+    await expect(page.getByRole("button", { name: "Choose Folder" })).toBeVisible();
+    await expect(page.getByLabel("Or enter a server-readable bundle path")).toHaveValue("");
+    await page.getByLabel("Or enter a server-readable bundle path").fill(fixturePath);
+    await page.getByRole("button", { name: "Load Path" }).click();
 
     await expect(page.getByRole("heading", { name: "minimal-okf" })).toBeVisible();
     await expect.poll(() => columnCount(page, ".overview-grid")).toBe(1);

@@ -21,25 +21,34 @@ import { GraphCanvas } from "./components/GraphCanvas";
 import { Icons } from "./components/Icons";
 import { MarkdownPanel } from "./components/MarkdownPanel";
 import { clearBundleCache, loadGitHubBundle, loadLocalBundle, refreshLocalBundle } from "./lib/api";
+import { isDirectoryPickerSupported, loadBrowserDirectoryBundle } from "./lib/browser-source";
 import { conceptTitle, formatDate, severityBadge, valueLabel } from "./lib/format";
-
-const recentPathKey = "okf-dashboard:last-local-path";
-
-function readRecentLocalPath(): string {
-  try {
-    return window.localStorage.getItem(recentPathKey) ?? "";
-  } catch {
-    return "";
-  }
-}
 
 export default function App() {
   const [bundle, setBundle] = useState<BundleSnapshot | undefined>();
-  const [path, setPath] = useState(readRecentLocalPath);
+  const [path, setPath] = useState("");
   const [github, setGithub] = useState({ owner: "", repo: "", ref: "main", path: "" });
+  const [browserReload, setBrowserReload] = useState<(() => Promise<BundleSnapshot>) | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const navigate = useNavigate();
+
+  async function chooseLocalFolder() {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const loaded = await loadBrowserDirectoryBundle();
+      setBrowserReload(() => loaded.reload);
+      setPath("");
+      setBundle(loaded.snapshot);
+      navigate(`/bundle/${loaded.snapshot.source.id}`);
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+      setError(loadError instanceof Error ? loadError.message : "Folder could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function runLoad(source: "local" | "github") {
     setLoading(true);
@@ -54,7 +63,7 @@ export default function App() {
               ref: github.ref,
               path: github.path || undefined,
             });
-      if (source === "local") window.localStorage.setItem(recentPathKey, path);
+      setBrowserReload(undefined);
       setBundle(snapshot);
       navigate(`/bundle/${snapshot.source.id}`);
     } catch (loadError) {
@@ -65,7 +74,12 @@ export default function App() {
   }
 
   async function reloadBundle() {
-    if (!bundle || bundle.source.type !== "local") return;
+    if (!bundle) return;
+    if (browserReload) {
+      setBundle(await browserReload());
+      return;
+    }
+    if (bundle.source.type !== "local") return;
     const snapshot = await refreshLocalBundle(bundle.source.id, bundle.source.rootPath);
     setBundle(snapshot);
   }
@@ -128,7 +142,7 @@ export default function App() {
             <dt>Type</dt>
             <dd>{bundle?.source.type ?? "Local Directory"}</dd>
             <dt>Path</dt>
-            <dd>{bundle?.source.rootPath ?? path}</dd>
+            <dd>{bundle?.source.rootPath ?? (path || "Not loaded")}</dd>
             <dt>Loaded</dt>
             <dd>{formatDate(bundle?.source.loadedAt)}</dd>
           </dl>
@@ -159,9 +173,11 @@ export default function App() {
                   github={github}
                   loading={loading}
                   path={path}
+                  pickerSupported={isDirectoryPickerSupported()}
                   setGithub={setGithub}
                   setPath={setPath}
                   onClearCache={clearCache}
+                  onChooseFolder={chooseLocalFolder}
                   onLoad={runLoad}
                 />
               }
@@ -200,41 +216,59 @@ function HomePage(props: {
   setGithub: (value: { owner: string; repo: string; ref: string; path: string }) => void;
   loading: boolean;
   error?: string;
+  pickerSupported: boolean;
+  onChooseFolder: () => void;
   onLoad: (source: "local" | "github") => void;
   onClearCache: () => void;
 }) {
   return (
     <>
-      <PageHeader title="Load OKF Bundle" status="Ready" sourcePath={props.path} />
+      <PageHeader
+        title="Load OKF Bundle"
+        status="Ready"
+        sourcePath={props.path || "Choose a local folder or enter a trusted server path"}
+      />
       <div className="load-grid">
         <section className="card">
           <div className="card-header">
             <h2>Local Source</h2>
-            <Badge tone="success">Trusted local path</Badge>
+            <Badge tone={props.pickerSupported ? "success" : "warning"}>
+              {props.pickerSupported ? "Folder picker" : "Path fallback"}
+            </Badge>
           </div>
           <div className="card-body stack">
+            <button
+              className="button button-primary"
+              disabled={props.loading || !props.pickerSupported}
+              onClick={props.onChooseFolder}
+              type="button"
+            >
+              {props.loading ? (
+                <Icons.loader aria-hidden="true" className="spin" size={16} />
+              ) : (
+                <Icons.folder aria-hidden="true" size={16} />
+              )}
+              Choose Folder
+            </button>
             <label className="field-label" htmlFor="local-path">
-              Bundle root path
+              Or enter a server-readable bundle path
             </label>
             <input
               className="search-input"
               id="local-path"
+              placeholder="/path/to/okf-bundle"
               onChange={(event) => props.setPath(event.target.value)}
               value={props.path}
             />
             <div className="actions-row">
               <button
-                className="button button-primary"
-                disabled={props.loading}
+                className="button"
+                disabled={props.loading || props.path.trim().length === 0}
                 onClick={() => props.onLoad("local")}
                 type="button"
               >
-                {props.loading ? (
-                  <Icons.loader aria-hidden="true" className="spin" size={16} />
-                ) : (
-                  <Icons.upload aria-hidden="true" size={16} />
-                )}
-                Load Local Bundle
+                <Icons.upload aria-hidden="true" size={16} />
+                Load Path
               </button>
               <button className="button" onClick={props.onClearCache} type="button">
                 <Icons.refresh aria-hidden="true" size={16} /> Clear Cache
