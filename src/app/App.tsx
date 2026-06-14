@@ -476,9 +476,6 @@ function Overview({ bundle }: { bundle: BundleSnapshot }) {
         <Card title="Distributions">
           <Distribution bundle={bundle} />
         </Card>
-        <Card title="Recent Activity">
-          <ActivityList bundle={bundle} />
-        </Card>
       </section>
       <section className="overview-lower-grid">
         <Card title="Directory Tree">
@@ -492,6 +489,11 @@ function Overview({ bundle }: { bundle: BundleSnapshot }) {
           <NavLink className="button full-width" to={`/bundle/${bundle.source.id}/graph`}>
             Open Full Graph View
           </NavLink>
+        </Card>
+      </section>
+      <section className="overview-activity">
+        <Card title="Recent Activity">
+          <ActivityList bundle={bundle} />
         </Card>
       </section>
       <ValidationStrip bundle={bundle} />

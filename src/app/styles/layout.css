@@ -173,7 +173,7 @@
 
 .overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.55fr) minmax(260px, 0.55fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.55fr);
   gap: var(--grid-gap-lg);
 }
 
@@ -181,6 +181,10 @@
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.25fr) minmax(360px, 1.25fr);
   gap: var(--grid-gap-lg);
+  margin-top: var(--grid-gap-lg);
+}
+
+.overview-activity {
   margin-top: var(--grid-gap-lg);
 }
 
@@ -214,12 +218,6 @@
 
 .load-grid {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-}
-
-@media (max-width: 1900px) {
-  .overview-grid {
-    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  }
 }
 
 @media (max-width: 1180px) {
