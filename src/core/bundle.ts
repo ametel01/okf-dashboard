@@ -1,15 +1,11 @@
 import { createCacheMetadata } from "./cache";
+import { extractCitations } from "./citations";
 import { parseFrontmatter, splitStandardFrontmatter } from "./frontmatter";
 import { buildGraph } from "./graph";
 import { buildDirectoryTree, deriveFacets, deriveMetrics } from "./indexes";
 import { resolveConceptLinks } from "./links";
-import {
-  extractCitations,
-  extractHeadings,
-  extractMarkdownLinks,
-  parseIndexEntries,
-  parseLogEntries,
-} from "./markdown";
+import { parseLogEntries } from "./logs";
+import { extractHeadings, extractMarkdownLinks, parseIndexEntries } from "./markdown";
 import type {
   AuxiliaryFile,
   BundleSnapshot,
