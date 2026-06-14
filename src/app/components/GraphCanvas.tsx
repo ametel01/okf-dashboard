@@ -14,12 +14,12 @@ export function GraphCanvas({
   onSelect,
 }: { graph: GraphSnapshot; onSelect?: (id: string) => void }) {
   const markerId = useId().replaceAll(":", "");
-  const width = 720;
-  const height = 360;
+  const width = 920;
+  const height = 420;
   const degree = countNodeDegrees(graph.edges);
-  const nodes = selectVisibleNodes(graph.nodes, degree, graph.largeGraph ? 54 : 64);
+  const nodes = selectVisibleNodes(graph.nodes, degree, graph.largeGraph ? 66 : 76);
   const nodeIds = new Set(nodes.map((node) => node.id));
-  const edges = selectVisibleEdges(graph.edges, nodeIds, graph.largeGraph ? 58 : 76);
+  const edges = selectVisibleEdges(graph.edges, nodeIds, graph.largeGraph ? 84 : 98);
   const positions = layoutGraph(nodes, edges, degree, width, height);
 
   return (
@@ -134,7 +134,7 @@ function layoutGraph(
   const positions = new Map<string, PositionedNode>();
   const concepts = nodes.filter((node) => !node.unresolved);
   const unresolved = nodes.filter((node) => node.unresolved);
-  const hubCount = Math.max(1, Math.min(5, Math.ceil(concepts.length / 8)));
+  const hubCount = Math.max(1, Math.min(6, Math.ceil(concepts.length / 9)));
   const hubs = concepts.slice(0, hubCount);
   const hubIds = new Set(hubs.map((node) => node.id));
   const anchors = hubAnchors(hubs.length, width, height);
@@ -145,7 +145,7 @@ function layoutGraph(
       node,
       x: anchor.x,
       y: anchor.y,
-      radius: 22 + Math.min(8, degree.get(node.id) ?? 0),
+      radius: 20 + Math.min(12, degree.get(node.id) ?? 0),
       showLabel: true,
     });
   });
@@ -166,13 +166,13 @@ function layoutGraph(
     if (!hubPosition) return;
     satellites.forEach((node, index) => {
       const angle = (Math.PI * 2 * index) / Math.max(1, satellites.length) + hubIndex * 0.42;
-      const distance = 76 + (index % 3) * 18;
+      const distance = 112 + (index % 4) * 28;
       positions.set(node.id, {
         node,
-        x: clamp(hubPosition.x + Math.cos(angle) * distance, 34, width - 34),
-        y: clamp(hubPosition.y + Math.sin(angle) * distance, 42, height - 42),
-        radius: 8 + Math.min(6, degree.get(node.id) ?? 0),
-        showLabel: (degree.get(node.id) ?? 0) >= 3 && positions.size < 16,
+        x: clamp(hubPosition.x + Math.cos(angle) * distance, 42, width - 42),
+        y: clamp(hubPosition.y + Math.sin(angle) * distance, 52, height - 52),
+        radius: 7 + Math.min(6, degree.get(node.id) ?? 0),
+        showLabel: (degree.get(node.id) ?? 0) >= 6 && positions.size < 11,
       });
     });
   });
@@ -181,8 +181,8 @@ function layoutGraph(
     const denominator = Math.max(1, unresolved.length - 1);
     positions.set(node.id, {
       node,
-      x: 84 + (index / denominator) * (width - 168),
-      y: 46 + (index % 2) * 22,
+      x: 112 + (index / denominator) * (width - 224),
+      y: 52 + (index % 2) * 30,
       radius: 7,
       showLabel: false,
     });
@@ -210,21 +210,22 @@ function hubAnchors(count: number, width: number, height: number): Array<{ x: nu
   if (count <= 1) return [center];
   if (count === 2)
     return [
-      { x: width * 0.36, y: height * 0.5 },
-      { x: width * 0.64, y: height * 0.5 },
+      { x: width * 0.27, y: height * 0.52 },
+      { x: width * 0.73, y: height * 0.52 },
     ];
   if (count === 3)
     return [
-      { x: width * 0.5, y: height * 0.34 },
-      { x: width * 0.34, y: height * 0.62 },
-      { x: width * 0.66, y: height * 0.62 },
+      { x: width * 0.5, y: height * 0.22 },
+      { x: width * 0.24, y: height * 0.7 },
+      { x: width * 0.76, y: height * 0.7 },
     ];
   return [
-    { x: width * 0.5, y: height * 0.42 },
-    { x: width * 0.3, y: height * 0.6 },
-    { x: width * 0.7, y: height * 0.6 },
-    { x: width * 0.38, y: height * 0.28 },
-    { x: width * 0.62, y: height * 0.28 },
+    { x: width * 0.5, y: height * 0.5 },
+    { x: width * 0.2, y: height * 0.62 },
+    { x: width * 0.8, y: height * 0.62 },
+    { x: width * 0.3, y: height * 0.24 },
+    { x: width * 0.7, y: height * 0.24 },
+    { x: width * 0.5, y: height * 0.82 },
   ];
 }
 
