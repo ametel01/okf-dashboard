@@ -314,6 +314,24 @@
   color: var(--color-text-muted);
 }
 
+.outline-list {
+  gap: var(--space-4);
+}
+
+.outline-section strong {
+  display: block;
+  font-size: var(--text-sm);
+}
+
+.outline-items {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 .activity-list strong,
 .activity-list span {
   display: block;

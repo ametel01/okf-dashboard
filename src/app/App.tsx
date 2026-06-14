@@ -9,6 +9,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { focusGraph } from "../core/graph";
+import { extractMarkdownOutline } from "../core/markdown";
 import type {
   BundleSnapshot,
   ConceptDocument,
@@ -561,11 +562,20 @@ function Overview({ bundle }: { bundle: BundleSnapshot }) {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  headerAction,
+}: {
+  title: string;
+  children: React.ReactNode;
+  headerAction?: React.ReactNode;
+}) {
   return (
     <section className="card">
       <div className="card-header">
         <h2>{title}</h2>
+        {headerAction}
       </div>
       <div className="card-body">{children}</div>
     </section>
@@ -1091,12 +1101,11 @@ interface SourceContextFile {
   body: string;
   raw: string;
   headings: Array<{ line: number; text: string }>;
-  indexEntries?: Array<{ line: number; href: string; section: string; title: string }>;
-  logEntries?: Array<{ line: number; text: string; date: string }>;
 }
 
 function SourceContextView({ bundle }: { bundle: BundleSnapshot }) {
   const [params, setParams] = useSearchParams();
+  const [mode, setMode] = useState<"rendered" | "raw">("rendered");
   const selectedDirectory = params.get("dir") ?? "";
   const selectedPath = params.get("file") ?? "";
   const files: SourceContextFile[] = [
@@ -1115,8 +1124,6 @@ function SourceContextView({ bundle }: { bundle: BundleSnapshot }) {
       body: file.body,
       raw: file.raw,
       headings: file.headings,
-      indexEntries: file.indexEntries,
-      logEntries: file.logEntries,
     })),
     ...bundle.auxiliaryFiles.map((file) => ({
       path: file.path,
@@ -1132,6 +1139,8 @@ function SourceContextView({ bundle }: { bundle: BundleSnapshot }) {
     : files;
   const selected =
     visibleFiles.find((file) => file.path === selectedPath) ?? visibleFiles[0] ?? undefined;
+  const parsedOutline = selected ? extractMarkdownOutline(selected.body) : [];
+  const hasParsedOutline = parsedOutline.length > 0;
 
   function selectFile(file: SourceContextFile) {
     setParams(new URLSearchParams({ dir: file.directory, file: file.path }));
@@ -1152,33 +1161,53 @@ function SourceContextView({ bundle }: { bundle: BundleSnapshot }) {
           {visibleFiles.length === 0 ? <li>No Markdown files found in this folder.</li> : null}
         </ul>
       </Card>
-      <Card title={selected?.path ?? "No source context"}>
-        <MarkdownPanel
-          markdown={selected?.body ?? "No index.md, log.md, or README.md files were found."}
-        />
+      <Card
+        headerAction={
+          selected ? (
+            <fieldset className="segmented">
+              <legend>Source file view mode</legend>
+              <button
+                className={mode === "rendered" ? "active" : ""}
+                onClick={() => setMode("rendered")}
+                type="button"
+              >
+                Rendered Markdown
+              </button>
+              <button
+                className={mode === "raw" ? "active" : ""}
+                onClick={() => setMode("raw")}
+                type="button"
+              >
+                Raw Source
+              </button>
+            </fieldset>
+          ) : undefined
+        }
+        title={selected?.path ?? "No source context"}
+      >
+        {mode === "rendered" ? (
+          <MarkdownPanel
+            markdown={selected?.body ?? "No index.md, log.md, or README.md files were found."}
+          />
+        ) : (
+          <pre className="raw-source">{selected?.raw ?? ""}</pre>
+        )}
       </Card>
       <Card title="Parsed Outline">
-        <ul className="compact-list">
-          {selected
-            ? selected.headings.map((heading) => (
-                <li key={`heading:${heading.line}`}>Heading: {heading.text}</li>
-              ))
-            : null}
-          {selected?.indexEntries
-            ? selected.indexEntries.map((entry) => (
-                <li key={`${entry.line}:${entry.href}`}>
-                  {entry.section}: {entry.title}
-                </li>
-              ))
-            : null}
-          {selected?.logEntries
-            ? selected.logEntries.map((entry) => (
-                <li key={`${entry.line}:${entry.text}`}>
-                  {entry.date}: {entry.text}
-                </li>
-              ))
-            : null}
-          {!selected ? <li>No parsed outline available.</li> : null}
+        <ul className="compact-list outline-list">
+          {parsedOutline.map((section) => (
+            <li className="outline-section" key={`heading:${section.line}`}>
+              <strong>{section.text}</strong>
+              {section.items.length > 0 ? (
+                <ul className="outline-items">
+                  {section.items.map((item) => (
+                    <li key={`item:${item.line}`}>{item.text}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+          {!hasParsedOutline ? <li>No parsed outline available.</li> : null}
         </ul>
       </Card>
     </section>

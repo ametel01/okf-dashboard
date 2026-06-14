@@ -41,7 +41,18 @@ test.describe("OKF Dashboard rendered UI", () => {
     await page.getByRole("link", { name: "Overview" }).first().click();
     await page.getByRole("link", { name: "tables" }).click();
     await expect(page.getByRole("heading", { name: "Source Files: tables" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /tables\/orders\.md/u })).toBeVisible();
+    await page.getByRole("button", { name: /tables\/orders\.md/u }).click();
+    const parsedOutline = page
+      .locator(".card")
+      .filter({ has: page.getByRole("heading", { name: "Parsed Outline" }) });
+    await expect(parsedOutline).toContainText("Schema");
+    await expect(parsedOutline).toContainText(
+      "See Revenue Metric (/metrics/revenue.md) and Missing (/tables/missing.md).",
+    );
+    await page.getByRole("button", { name: "Raw Source" }).click();
+    await expect(page.locator(".raw-source")).toContainText("type: BigQuery Table");
+    await page.getByRole("button", { name: "Rendered Markdown" }).click();
+    await expect(page.getByRole("heading", { name: "Schema" })).toBeVisible();
 
     await page.getByRole("link", { name: "Concepts" }).first().click();
     await expect(page.getByRole("heading", { name: /Concepts/u })).toBeVisible();

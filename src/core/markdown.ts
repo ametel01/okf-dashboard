@@ -1,11 +1,33 @@
 import type { IndexEntry, MarkdownHeading, MarkdownLink } from "./okf-types";
 
 const linkPattern = /\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/gu;
+const headingPattern = /^(#{1,6})\s+(.+?)\s*#*\s*$/u;
+
+export interface MarkdownOutlineItem {
+  line: number;
+  text: string;
+}
+
+export interface MarkdownOutlineSection extends MarkdownHeading {
+  items: MarkdownOutlineItem[];
+}
 
 export function extractHeadings(body: string): MarkdownHeading[] {
   return body.split(/\r?\n/u).flatMap((line, index) => {
-    const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/u.exec(line);
+    const match = headingPattern.exec(line);
     return match ? [{ depth: match[1].length, text: match[2].trim(), line: index + 1 }] : [];
+  });
+}
+
+export function extractMarkdownOutline(body: string): MarkdownOutlineSection[] {
+  const lines = body.split(/\r?\n/u);
+  const headings = extractHeadings(body);
+  return headings.map((heading, index) => {
+    const nextHeadingLine = headings[index + 1]?.line ?? lines.length + 1;
+    return {
+      ...heading,
+      items: extractOutlineItems(lines, heading.line + 1, nextHeadingLine),
+    };
   });
 }
 
@@ -48,6 +70,44 @@ export function markdownToText(markdown: string): string {
     .replace(/`([^`]+)`/gu, "$1")
     .replace(linkPattern, "$1 $2")
     .replace(/[#>*_~|-]/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function extractOutlineItems(
+  lines: string[],
+  startLine: number,
+  endLine: number,
+): MarkdownOutlineItem[] {
+  const items: MarkdownOutlineItem[] = [];
+  let inFence = false;
+  for (let lineNumber = startLine; lineNumber < endLine; lineNumber += 1) {
+    const line = lines[lineNumber - 1] ?? "";
+    const trimmed = line.trim();
+    if (/^(```|~~~)/u.test(trimmed)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const text = cleanOutlineLine(line);
+    if (text) items.push({ line: lineNumber, text });
+  }
+  return items;
+}
+
+function cleanOutlineLine(line: string): string {
+  const trimmed = line
+    .replace(/^\s*(?:[-*+]\s+|\d+[.)]\s+)/u, "")
+    .replace(/^>\s?/u, "")
+    .trim();
+  if (!trimmed || headingPattern.test(trimmed) || /^[-*_]{3,}$/u.test(trimmed)) return "";
+  return trimmed
+    .replace(linkPattern, "$1 ($2)")
+    .replace(/`([^`]+)`/gu, "$1")
+    .replace(/\*\*([^*]+)\*\*/gu, "$1")
+    .replace(/\*([^*]+)\*/gu, "$1")
+    .replace(/__([^_]+)__/gu, "$1")
+    .replace(/_([^_]+)_/gu, "$1")
     .replace(/\s+/gu, " ")
     .trim();
 }
