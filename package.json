@@ -13,7 +13,8 @@
     "test": "bun test",
     "test:e2e": "bun run build && playwright test",
     "build": "vite build",
-    "verify": "bun run check && bun run typecheck && bun run test && bun run build"
+    "verify": "bun run check && bun run typecheck && bun run test && bun run build",
+    "doctor": "react-doctor"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.5.2",
@@ -33,6 +34,7 @@
     "@types/bun": "^1.2.16",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
+    "react-doctor": "^0.5.5",
     "typescript": "^5.8.3"
   }
 }
