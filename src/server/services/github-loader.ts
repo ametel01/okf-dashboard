@@ -11,15 +11,23 @@ interface GitTreeItem {
   url: string;
 }
 
+const GIT_SLUG_PATTERN = /^[A-Za-z0-9_.-]+$/u;
+
 export async function loadGitHubInventory(input: {
   owner: string;
   repo: string;
   ref: string;
   path?: string;
 }): Promise<SourceInventory> {
+  const owner = validateGitSlug(input.owner, "owner");
+  const repo = validateGitSlug(input.repo, "repo");
+  const ref = validateGitSlug(input.ref, "ref");
+  const encodedOwner = encodeURIComponent(owner);
+  const encodedRepo = encodeURIComponent(repo);
+  const encodedRef = encodeURIComponent(ref);
   const bundlePath = normalizeRelativePath(input.path ?? "");
   const treeResponse = await fetch(
-    `https://api.github.com/repos/${input.owner}/${input.repo}/git/trees/${encodeURIComponent(input.ref)}?recursive=1`,
+    `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/git/trees/${encodedRef}?recursive=1`,
     { headers: { Accept: "application/vnd.github+json", "User-Agent": "okf-dashboard-local" } },
   );
   if (!treeResponse.ok) {
@@ -32,20 +40,29 @@ export async function loadGitHubInventory(input: {
   });
   const source = createSourceDescriptor({
     type: "github",
-    rootPath: `${input.owner}/${input.repo}/${bundlePath}`,
-    ref: input.ref,
-    displayName: `${input.owner}/${input.repo}`,
+    rootPath: `${owner}/${repo}/${bundlePath}`,
+    ref,
+    displayName: `${owner}/${repo}`,
   });
-  const files = [];
-  for (const item of markdownFiles) {
-    const rawPath = bundlePath
-      ? item.path.slice(bundlePath.length).replace(/^\/+/u, "")
-      : item.path;
-    const contentResponse = await fetch(
-      `https://raw.githubusercontent.com/${input.owner}/${input.repo}/${input.ref}/${item.path}`,
-    );
-    if (!contentResponse.ok) throw new Error(`GitHub file request failed for ${item.path}`);
-    files.push(createSourceFile(rawPath, await contentResponse.text()));
-  }
+  const files = await Promise.all(
+    markdownFiles.map(async (item) => {
+      const rawPath = bundlePath
+        ? item.path.slice(bundlePath.length).replace(/^\/+/u, "")
+        : item.path;
+      const encodedPath = item.path.split("/").map(encodeURIComponent).join("/");
+      const contentResponse = await fetch(
+        `https://raw.githubusercontent.com/${encodedOwner}/${encodedRepo}/${encodedRef}/${encodedPath}`,
+      );
+      if (!contentResponse.ok) throw new Error(`GitHub file request failed for ${item.path}`);
+      return createSourceFile(rawPath, await contentResponse.text());
+    }),
+  );
   return { source, files, warnings: [] };
+}
+
+function validateGitSlug(value: string, field: string): string {
+  if (!GIT_SLUG_PATTERN.test(value)) {
+    throw new Error(`Invalid GitHub ${field}. Use only letters, numbers, ".", "_", or "-".`);
+  }
+  return value;
 }

@@ -10,12 +10,12 @@ export function directoryOf(path: string): string {
   return index === -1 ? "" : normalized.slice(0, index);
 }
 
-export function basename(path: string): string {
+function basename(path: string): string {
   const normalized = normalizeRelativePath(path);
   return normalized.split("/").pop() ?? normalized;
 }
 
-export function classifyMarkdownFile(path: string): FileKind {
+function classifyMarkdownFile(path: string): FileKind {
   const name = basename(path);
   if (name === "index.md") return "index";
   if (name === "log.md") return "log";
@@ -69,7 +69,7 @@ export function createSourceFile(
   };
 }
 
-export function fingerprintText(text: string): string {
+function fingerprintText(text: string): string {
   let hash = 0x811c9dc5;
   for (let index = 0; index < text.length; index += 1) {
     hash ^= text.charCodeAt(index);

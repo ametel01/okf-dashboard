@@ -1,4 +1,4 @@
-import type { ConceptDocument, ConceptLink, GraphSnapshot } from "./okf-types";
+import type { ConceptDocument, ConceptLink, GraphNode, GraphSnapshot } from "./okf-types";
 import { deriveTitle } from "./source-model";
 
 export function buildGraph(
@@ -26,10 +26,12 @@ export function buildGraph(
     findingCount: 1,
   }));
   const nodeIds = new Set([...conceptNodes, ...unresolvedNodes].map((node) => node.id));
-  const edges = links
-    .filter((link) => link.status !== "external" && link.status !== "unsupported")
-    .map((link, index) => ({
-      id: `${link.sourceId}:${link.targetId ?? link.rawHref}:${index}`,
+  const edges: GraphSnapshot["edges"] = [];
+  let edgeIndex = 0;
+  for (const link of links) {
+    if (link.status === "external" || link.status === "unsupported") continue;
+    edges.push({
+      id: `${link.sourceId}:${link.targetId ?? link.rawHref}:${edgeIndex}`,
       sourceId: link.sourceId,
       targetId:
         link.targetId && nodeIds.has(link.targetId)
@@ -37,12 +39,11 @@ export function buildGraph(
           : `unresolved:${link.sourceId}:${link.rawHref}`,
       status: link.status,
       label: link.text,
-    }));
+    });
+    edgeIndex += 1;
+  }
   const nodes = [...conceptNodes, ...unresolvedNodes];
-  const groups = [...new Set(nodes.map((node) => node.directory))].map((directory) => ({
-    directory,
-    nodeIds: nodes.filter((node) => node.directory === directory).map((node) => node.id),
-  }));
+  const groups = groupNodeIdsByDirectory(nodes);
   return { nodes, edges, groups, largeGraph: nodes.length > maxNodes };
 }
 
@@ -70,9 +71,16 @@ export function focusGraph(
   nodes = nodes.slice(0, limit);
   const ids = new Set(nodes.map((node) => node.id));
   const edges = snapshot.edges.filter((edge) => ids.has(edge.sourceId) && ids.has(edge.targetId));
-  const groups = [...new Set(nodes.map((node) => node.directory))].map((directory) => ({
-    directory,
-    nodeIds: nodes.filter((node) => node.directory === directory).map((node) => node.id),
-  }));
+  const groups = groupNodeIdsByDirectory(nodes);
   return { nodes, edges, groups, largeGraph: snapshot.largeGraph };
+}
+
+function groupNodeIdsByDirectory(nodes: GraphNode[]): GraphSnapshot["groups"] {
+  const nodeIdsByDirectory = new Map<string, string[]>();
+  for (const node of nodes) {
+    const nodeIds = nodeIdsByDirectory.get(node.directory);
+    if (nodeIds) nodeIds.push(node.id);
+    else nodeIdsByDirectory.set(node.directory, [node.id]);
+  }
+  return Array.from(nodeIdsByDirectory, ([directory, nodeIds]) => ({ directory, nodeIds }));
 }

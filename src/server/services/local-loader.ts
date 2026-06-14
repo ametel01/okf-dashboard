@@ -17,6 +17,7 @@ export async function loadLocalInventory(rootPath: string): Promise<SourceInvent
   const files: SourceFile[] = [];
   const warnings: ValidationFinding[] = [];
   await scanDirectory(absoluteRoot, absoluteRoot, files, warnings);
+  files.sort((left, right) => left.path.localeCompare(right.path));
   return { source, files, warnings };
 }
 
@@ -27,6 +28,7 @@ async function scanDirectory(
   warnings: ValidationFinding[],
 ): Promise<void> {
   const entries = await readdir(directory, { withFileTypes: true });
+  const scans: Array<Promise<void>> = [];
   for (const entry of entries) {
     const absolutePath = join(directory, entry.name);
     const relativePath = normalizeRelativePath(relative(root, absolutePath));
@@ -43,11 +45,18 @@ async function scanDirectory(
       continue;
     }
     if (entry.isDirectory()) {
-      if (!entry.name.startsWith(".")) await scanDirectory(root, absolutePath, files, warnings);
+      if (!entry.name.startsWith(".")) {
+        scans.push(scanDirectory(root, absolutePath, files, warnings));
+      }
       continue;
     }
     if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(createSourceFile(relativePath, await readFile(absolutePath, "utf8")));
+      scans.push(
+        readFile(absolutePath, "utf8").then((content) => {
+          files.push(createSourceFile(relativePath, content));
+        }),
+      );
     }
   }
+  await Promise.all(scans);
 }

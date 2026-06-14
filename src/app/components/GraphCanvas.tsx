@@ -116,11 +116,16 @@ function selectVisibleNodes(
 }
 
 function selectVisibleEdges(edges: GraphEdge[], nodeIds: Set<string>, limit: number): GraphEdge[] {
-  const visibleEdges = edges.filter(
-    (edge) => nodeIds.has(edge.sourceId) && nodeIds.has(edge.targetId),
-  );
-  const resolved = visibleEdges.filter((edge) => edge.status === "resolved").slice(0, limit);
-  const unresolved = visibleEdges.filter((edge) => edge.status !== "resolved").slice(0, 10);
+  const resolved: GraphEdge[] = [];
+  const unresolved: GraphEdge[] = [];
+  for (const edge of edges) {
+    if (!nodeIds.has(edge.sourceId) || !nodeIds.has(edge.targetId)) continue;
+    if (edge.status === "resolved") {
+      if (resolved.length < limit) resolved.push(edge);
+    } else if (unresolved.length < 10) {
+      unresolved.push(edge);
+    }
+  }
   return [...resolved, ...unresolved];
 }
 
@@ -152,13 +157,14 @@ function layoutGraph(
 
   const spokes = new Map<string, GraphNode[]>();
   for (const hub of hubs) spokes.set(hub.id, []);
-  concepts
-    .filter((node) => !hubIds.has(node.id))
-    .forEach((node, index) => {
-      const hub = connectedHub(node, hubs, edges) ?? hubs[index % Math.max(1, hubs.length)];
-      if (!hub) return;
-      spokes.get(hub.id)?.push(node);
-    });
+  let spokeIndex = 0;
+  for (const node of concepts) {
+    if (hubIds.has(node.id)) continue;
+    const hub = connectedHub(node, hubs, edges) ?? hubs[spokeIndex % Math.max(1, hubs.length)];
+    spokeIndex += 1;
+    if (!hub) continue;
+    spokes.get(hub.id)?.push(node);
+  }
 
   hubs.forEach((hub, hubIndex) => {
     const satellites = spokes.get(hub.id) ?? [];

@@ -85,14 +85,16 @@ export function buildBundleSnapshot(inventory: SourceInventory, cacheHit = false
   ];
   attachFindingsToConcepts(resolved.concepts, initialFindings);
   const graph = buildGraph(resolved.concepts, resolved.links);
-  const files: SourceFileSummary[] = inventory.files
-    .filter((file) => !file.symlinkSkipped)
-    .map((file) => ({
+  const files: SourceFileSummary[] = [];
+  for (const file of inventory.files) {
+    if (file.symlinkSkipped) continue;
+    files.push({
       path: file.path,
       kind: file.kind,
       fingerprint: file.fingerprint,
       bytes: new TextEncoder().encode(file.content).byteLength,
-    }));
+    });
+  }
   const directories = buildDirectoryTree(files, resolved.concepts);
   const flattenedDirectories = flattenDirectories(directories);
   const contentFingerprint = fingerprintFiles(files);

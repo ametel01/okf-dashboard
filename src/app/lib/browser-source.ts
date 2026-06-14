@@ -74,9 +74,13 @@ async function buildSnapshot(directory: LocalDirectoryHandle): Promise<BundleSna
 }
 
 async function buildSnapshotFromFiles(files: BrowserSelectedFile[]): Promise<BundleSnapshot> {
-  const paths = files.map(relativePathOf).filter((path) => path.length > 0);
+  const paths: string[] = [];
+  for (const file of files) {
+    const path = relativePathOf(file);
+    if (path.length > 0) paths.push(path);
+  }
   const rootName = commonSelectedRoot(paths);
-  const markdownFiles: SourceFile[] = [];
+  const markdownFilePromises: Array<Promise<SourceFile>> = [];
 
   for (const file of files) {
     const rawPath = relativePathOf(file);
@@ -85,8 +89,9 @@ async function buildSnapshotFromFiles(files: BrowserSelectedFile[]): Promise<Bun
         ? normalizeRelativePath(rawPath.slice(rootName.length + 1))
         : rawPath;
     if (!path.endsWith(".md") || hasHiddenPathSegment(path)) continue;
-    markdownFiles.push(createSourceFile(path, await file.text()));
+    markdownFilePromises.push(file.text().then((content) => createSourceFile(path, content)));
   }
+  const markdownFiles = await Promise.all(markdownFilePromises);
 
   if (markdownFiles.length === 0) {
     throw new Error("The selected folder does not contain Markdown files.");
@@ -132,10 +137,12 @@ function relativePathOf(file: BrowserSelectedFile): string {
 }
 
 function commonSelectedRoot(paths: string[]): string | undefined {
-  const rootSegments = paths
-    .filter((path) => path.includes("/"))
-    .map((path) => path.split("/")[0])
-    .filter((segment) => segment.length > 0);
+  const rootSegments: string[] = [];
+  for (const path of paths) {
+    if (!path.includes("/")) continue;
+    const [segment] = path.split("/");
+    if (segment.length > 0) rootSegments.push(segment);
+  }
   if (rootSegments.length === 0) return undefined;
   const [first] = rootSegments;
   return rootSegments.every((segment) => segment === first) ? first : undefined;

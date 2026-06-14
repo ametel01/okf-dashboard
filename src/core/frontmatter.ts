@@ -62,16 +62,17 @@ export function splitStandardFrontmatter(data: Record<string, unknown>): {
   };
 }
 
-export function stringValue(value: unknown): string | undefined {
+function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function arrayOfStrings(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return value.flatMap((item) => {
+    if (typeof item !== "string") return [];
+    const trimmed = item.trim();
+    return trimmed ? [trimmed] : [];
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

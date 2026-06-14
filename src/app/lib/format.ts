@@ -1,6 +1,11 @@
 import type { ConceptDocument, FindingSeverity } from "../../core/okf-types";
 import { deriveTitle } from "../../core/source-model";
 
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 export function conceptTitle(concept: ConceptDocument): string {
   return concept.title ?? deriveTitle(concept.path);
 }
@@ -9,10 +14,7 @@ export function formatDate(value?: string): string {
   if (!value) return "Not provided";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return dateTimeFormatter.format(date);
 }
 
 export function severityBadge(severity: FindingSeverity): string {

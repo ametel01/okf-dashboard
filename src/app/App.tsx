@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useReducer, useRef, useState } from "react";
 import {
   NavLink,
   Navigate,
@@ -28,52 +28,112 @@ import {
 } from "./lib/browser-source";
 import { conceptTitle, formatDate, severityBadge, valueLabel } from "./lib/format";
 
+interface GithubFormState {
+  owner: string;
+  repo: string;
+  ref: string;
+  path: string;
+}
+
+interface AppState {
+  bundle?: BundleSnapshot;
+  path: string;
+  github: GithubFormState;
+  loading: boolean;
+  error?: string;
+}
+
+type AppAction =
+  | { type: "startLoading" }
+  | { type: "loadSucceeded"; bundle: BundleSnapshot; clearPath?: boolean }
+  | { type: "loadFailed"; message: string }
+  | { type: "loadCancelled" }
+  | { type: "setBundle"; bundle: BundleSnapshot }
+  | { type: "setPath"; path: string }
+  | { type: "setGithub"; github: GithubFormState };
+
+const initialAppState: AppState = {
+  path: "",
+  github: { owner: "", repo: "", ref: "main", path: "" },
+  loading: false,
+};
+
+const DIRECTORY_INPUT_PROPS = { directory: "", webkitdirectory: "" };
+type MatchLabel = { conceptId: string; label: string };
+const EMPTY_MATCH_LABELS: MatchLabel[] = [];
+
+function appReducer(state: AppState, action: AppAction): AppState {
+  switch (action.type) {
+    case "startLoading":
+      return { ...state, loading: true, error: undefined };
+    case "loadSucceeded":
+      return {
+        ...state,
+        bundle: action.bundle,
+        path: action.clearPath ? "" : state.path,
+        loading: false,
+        error: undefined,
+      };
+    case "loadFailed":
+      return { ...state, loading: false, error: action.message };
+    case "loadCancelled":
+      return { ...state, loading: false };
+    case "setBundle":
+      return { ...state, bundle: action.bundle };
+    case "setPath":
+      return { ...state, path: action.path };
+    case "setGithub":
+      return { ...state, github: action.github };
+    default:
+      return state;
+  }
+}
+
 export default function App() {
-  const [bundle, setBundle] = useState<BundleSnapshot | undefined>();
-  const [path, setPath] = useState("");
-  const [github, setGithub] = useState({ owner: "", repo: "", ref: "main", path: "" });
-  const [browserReload, setBrowserReload] = useState<(() => Promise<BundleSnapshot>) | undefined>();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  const [{ bundle, path, github, loading, error }, dispatch] = useReducer(
+    appReducer,
+    initialAppState,
+  );
+  const browserReloadRef = useRef<(() => Promise<BundleSnapshot>) | undefined>();
   const navigate = useNavigate();
 
   async function chooseLocalFolder() {
-    setLoading(true);
-    setError(undefined);
+    dispatch({ type: "startLoading" });
     try {
       const loaded = await loadBrowserDirectoryBundle();
-      setBrowserReload(() => loaded.reload);
-      setPath("");
-      setBundle(loaded.snapshot);
+      browserReloadRef.current = loaded.reload;
+      dispatch({ type: "loadSucceeded", bundle: loaded.snapshot, clearPath: true });
       navigate(`/bundle/${loaded.snapshot.source.id}`);
     } catch (loadError) {
-      if (loadError instanceof DOMException && loadError.name === "AbortError") return;
-      setError(loadError instanceof Error ? loadError.message : "Folder could not be loaded.");
-    } finally {
-      setLoading(false);
+      if (loadError instanceof DOMException && loadError.name === "AbortError") {
+        dispatch({ type: "loadCancelled" });
+        return;
+      }
+      dispatch({
+        type: "loadFailed",
+        message: loadError instanceof Error ? loadError.message : "Folder could not be loaded.",
+      });
     }
   }
 
   async function loadSelectedFolderFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    setLoading(true);
-    setError(undefined);
+    dispatch({ type: "startLoading" });
     try {
       const loaded = await loadBrowserFileList(files);
-      setBrowserReload(() => loaded.reload);
-      setPath("");
-      setBundle(loaded.snapshot);
+      browserReloadRef.current = loaded.reload;
+      dispatch({ type: "loadSucceeded", bundle: loaded.snapshot, clearPath: true });
       navigate(`/bundle/${loaded.snapshot.source.id}`);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Folder could not be loaded.");
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: "loadFailed",
+        message: loadError instanceof Error ? loadError.message : "Folder could not be loaded.",
+      });
     }
   }
 
   async function runLoad(source: "local" | "github") {
-    setLoading(true);
-    setError(undefined);
+    dispatch({ type: "startLoading" });
     try {
       const snapshot =
         source === "local"
@@ -84,25 +144,26 @@ export default function App() {
               ref: github.ref,
               path: github.path || undefined,
             });
-      setBrowserReload(undefined);
-      setBundle(snapshot);
+      browserReloadRef.current = undefined;
+      dispatch({ type: "loadSucceeded", bundle: snapshot });
       navigate(`/bundle/${snapshot.source.id}`);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Bundle could not be loaded.");
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: "loadFailed",
+        message: loadError instanceof Error ? loadError.message : "Bundle could not be loaded.",
+      });
     }
   }
 
   async function reloadBundle() {
     if (!bundle) return;
-    if (browserReload) {
-      setBundle(await browserReload());
+    if (browserReloadRef.current) {
+      dispatch({ type: "setBundle", bundle: await browserReloadRef.current() });
       return;
     }
     if (bundle.source.type !== "local") return;
     const snapshot = await refreshLocalBundle(bundle.source.id, bundle.source.rootPath);
-    setBundle(snapshot);
+    dispatch({ type: "setBundle", bundle: snapshot });
   }
 
   async function clearCache() {
@@ -195,8 +256,8 @@ export default function App() {
                   loading={loading}
                   path={path}
                   pickerSupported={isDirectoryPickerSupported()}
-                  setGithub={setGithub}
-                  setPath={setPath}
+                  setGithub={(nextGithub) => dispatch({ type: "setGithub", github: nextGithub })}
+                  setPath={(nextPath) => dispatch({ type: "setPath", path: nextPath })}
                   onClearCache={clearCache}
                   onChooseFolder={chooseLocalFolder}
                   onFolderFilesSelected={loadSelectedFolderFiles}
@@ -245,7 +306,6 @@ function HomePage(props: {
   onClearCache: () => void;
 }) {
   const fallbackFolderInputRef = useRef<HTMLInputElement | null>(null);
-  const directoryInputProps = { directory: "", webkitdirectory: "" };
 
   return (
     <>
@@ -291,7 +351,7 @@ function HomePage(props: {
                 props.onFolderFilesSelected(event.currentTarget.files);
                 event.currentTarget.value = "";
               }}
-              {...directoryInputProps}
+              {...DIRECTORY_INPUT_PROPS}
             />
             <label className="field-label" htmlFor="local-path">
               Or enter a server-readable bundle path
@@ -719,12 +779,12 @@ function ConceptTable({
   concepts,
   sourceId,
   compact = false,
-  matchLabels = [],
+  matchLabels = EMPTY_MATCH_LABELS,
 }: {
   concepts: ConceptDocument[];
   sourceId: string;
   compact?: boolean;
-  matchLabels?: Array<{ conceptId: string; label: string }>;
+  matchLabels?: MatchLabel[];
 }) {
   const matchById = new Map(matchLabels.map((match) => [match.conceptId, match.label]));
   return (
@@ -924,6 +984,7 @@ function GraphView({ bundle }: { bundle: BundleSnapshot }) {
     <section className="stack">
       <div className="toolbar">
         <input
+          aria-label="Filter graph"
           className="search-input"
           placeholder="Filter graph..."
           value={query}
