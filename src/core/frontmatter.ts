@@ -15,6 +15,14 @@ export function parseFrontmatter(content: string, filePath: string): ParsedFront
   try {
     const parsed = matter(content);
     const data = isRecord(parsed.data) ? parsed.data : {};
+    if (
+      hasFrontmatter &&
+      Object.keys(data).length === 0 &&
+      parsed.content.trimStart().startsWith("---")
+    ) {
+      const recovered = parseLenientFrontmatter(content);
+      if (recovered) return recoveredFrontmatter(recovered, findings);
+    }
     return {
       data,
       body: parsed.content.trimStart(),
@@ -23,6 +31,10 @@ export function parseFrontmatter(content: string, filePath: string): ParsedFront
       findings,
     };
   } catch (error) {
+    const recovered = parseLenientFrontmatter(content);
+    if (recovered) {
+      return recoveredFrontmatter(recovered, findings);
+    }
     findings.push({
       id: `frontmatter:${filePath}`,
       severity: "error",
@@ -34,6 +46,62 @@ export function parseFrontmatter(content: string, filePath: string): ParsedFront
     });
     return { data: {}, body: content, hasFrontmatter, findings };
   }
+}
+
+function recoveredFrontmatter(
+  recovered: { data: Record<string, unknown>; body: string },
+  findings: ValidationFinding[],
+): ParsedFrontmatter {
+  return {
+    data: recovered.data,
+    body: recovered.body,
+    hasFrontmatter: true,
+    okfVersion: stringValue(recovered.data.okf_version),
+    findings,
+  };
+}
+
+function parseLenientFrontmatter(
+  content: string,
+): { data: Record<string, unknown>; body: string } | undefined {
+  const match = /^\s*---[ \t]*\r?\n/u.exec(content);
+  if (!match) return undefined;
+  const rest = content.slice(match[0].length);
+  const closing = /\r?\n---[ \t]*(?:\r?\n|$)/u.exec(rest);
+  if (!closing) return undefined;
+  const frontmatter = rest.slice(0, closing.index);
+  const body = rest.slice(closing.index + closing[0].length).trimStart();
+  const data: Record<string, unknown> = {};
+  for (const line of frontmatter.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const field = /^([A-Za-z_][\w.-]*)\s*:\s*(.*)$/u.exec(line);
+    if (!field) return undefined;
+    data[field[1]] = parseLenientValue(field[2].trim());
+  }
+  return Object.keys(data).length > 0 ? { data, body } : undefined;
+}
+
+function parseLenientValue(value: string): unknown {
+  if (!value) return "";
+  if (value.startsWith("[") && value.endsWith("]")) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map((item) => unquoteLenientValue(item.trim()))
+      .filter((item) => item.length > 0);
+  }
+  return unquoteLenientValue(value);
+}
+
+function unquoteLenientValue(value: string): string {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1);
+  }
+  return value;
 }
 
 export function splitStandardFrontmatter(data: Record<string, unknown>): {
