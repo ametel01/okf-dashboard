@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
-    "ignore": ["dist/**", "node_modules/**", "coverage/**", "tmp/**", "*.log"]
+    "ignore": [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "tmp/**",
+      "test-results/**",
+      "playwright-report/**",
+      "*.log"
+    ]
   },
   "formatter": {
     "enabled": true,

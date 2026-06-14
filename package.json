@@ -11,6 +11,7 @@
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "test:e2e": "bun run build && playwright test",
     "build": "vite build",
     "verify": "bun run check && bun run typecheck && bun run test && bun run build"
   },
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.60.0",
     "@types/bun": "^1.2.16",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",

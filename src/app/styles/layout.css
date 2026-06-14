@@ -179,7 +179,7 @@
 
 .overview-lower-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.25fr) minmax(420px, 1.25fr);
+  grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.25fr) minmax(360px, 1.25fr);
   gap: var(--grid-gap-lg);
   margin-top: var(--grid-gap-lg);
 }

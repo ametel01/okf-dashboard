@@ -23,11 +23,19 @@ import { MarkdownPanel } from "./components/MarkdownPanel";
 import { clearBundleCache, loadGitHubBundle, loadLocalBundle, refreshLocalBundle } from "./lib/api";
 import { conceptTitle, formatDate, severityBadge, valueLabel } from "./lib/format";
 
-const fixturePath = `${window.location.origin.includes("localhost") ? "" : ""}${"/Users/alexmetelli/source/okf-dashboard/test/fixtures/minimal-okf"}`;
+const recentPathKey = "okf-dashboard:last-local-path";
+
+function readRecentLocalPath(): string {
+  try {
+    return window.localStorage.getItem(recentPathKey) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 export default function App() {
   const [bundle, setBundle] = useState<BundleSnapshot | undefined>();
-  const [path, setPath] = useState(fixturePath);
+  const [path, setPath] = useState(readRecentLocalPath);
   const [github, setGithub] = useState({ owner: "", repo: "", ref: "main", path: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -46,6 +54,7 @@ export default function App() {
               ref: github.ref,
               path: github.path || undefined,
             });
+      if (source === "local") window.localStorage.setItem(recentPathKey, path);
       setBundle(snapshot);
       navigate(`/bundle/${snapshot.source.id}`);
     } catch (loadError) {

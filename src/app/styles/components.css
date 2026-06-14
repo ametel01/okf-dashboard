@@ -163,12 +163,24 @@
 
 .distribution-grid {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-5);
-  align-items: center;
+  grid-template-areas:
+    "donut types"
+    "donut tags";
+  grid-template-columns: 124px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.distribution-grid .bar-list:nth-of-type(2) {
+  grid-area: types;
+}
+
+.distribution-grid .bar-list:nth-of-type(3) {
+  grid-area: tags;
 }
 
 .donut {
+  grid-area: donut;
   width: 112px;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -185,14 +197,20 @@
 .bar-list {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .bar-row {
   display: grid;
-  grid-template-columns: minmax(80px, 1fr) minmax(60px, 1fr) 32px;
+  grid-template-columns: minmax(92px, 1fr) minmax(56px, 0.8fr) 32px;
   gap: var(--space-2);
   align-items: center;
   font-size: var(--text-xs);
+}
+
+.bar-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .bar-row i {
