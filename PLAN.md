@@ -44,7 +44,21 @@
 - Test command: `bun run test`
 - Additional gates: `bun run typecheck`, `bun run build`, `bun run verify`
 
+## Progress Tracking
+- Step 0 must create `PROGRESS.md` in the project root.
+- `PROGRESS.md` is the implementation journal for this plan. It should list every step from this plan with status, owner or agent if known, start date, completion date, commit SHA, validation commands run, validation result, and notes or blockers.
+- After completing each implementation step, update `PROGRESS.md` before creating that step's commit.
+- Each progress update must record whether all quality gates passed. If any gate is skipped, record the exact reason and the residual risk.
+- If a step changes scope, discovers a new blocker, or resolves an open question, update both `PROGRESS.md` and this `PLAN.md` when the plan itself needs to change.
+
 ## Incremental Steps
+
+Every implementation step must end with:
+
+1. Run all quality gates: format, lint, tests, and any project-specific checks.
+2. Fix any failures before proceeding.
+3. Update `PROGRESS.md` with the completed step, validation results, commit message to be used, and any follow-up notes.
+4. Create a commit for that completed step.
 
 ### Step 0: Quality Gates Setup
 Goal: Create the project scaffold and runnable validation gates before feature work starts.
@@ -69,11 +83,13 @@ Changes:
   - `test/fixtures`
   - `test/core`
   - `test/server`
+- Add root `PROGRESS.md` with a step table or checklist covering every step in this plan and fields for status, dates, commit SHA, validation results, and notes.
 - Add `.gitignore` for dependencies, build output, coverage, logs, and local environment files.
 
 Acceptance Criteria:
 - `bun install --frozen-lockfile` succeeds after the lockfile is created.
 - `bun run verify` runs and passes on the scaffold.
+- `PROGRESS.md` exists and records Step 0 as complete before the Step 0 commit is created.
 - No feature behavior is implemented beyond a minimal app/server shell.
 
 Validation:
@@ -554,4 +570,3 @@ Validation:
 
 Commit:
 - `feat: load public github okf snapshots`
-
