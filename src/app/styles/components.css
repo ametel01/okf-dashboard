@@ -163,7 +163,7 @@
 
 .distribution-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+  grid-template-columns: minmax(360px, 1.35fr) minmax(260px, 0.65fr);
   gap: var(--space-4);
   align-items: stretch;
 }
@@ -218,7 +218,7 @@
 
 .legend-row {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) 28px;
+  grid-template-columns: 8px minmax(72px, 1fr) 32px;
   gap: var(--space-2);
   align-items: center;
   color: var(--color-text-muted);
@@ -530,7 +530,9 @@
   .validation-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+@media (max-width: 1900px) {
   .distribution-grid {
     grid-template-columns: 1fr;
   }
