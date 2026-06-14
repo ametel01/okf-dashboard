@@ -636,8 +636,13 @@ function DirectoryTree({ bundle }: { bundle: BundleSnapshot }) {
     <ul className="tree-list">
       {bundle.facets.directories.map((directory) => (
         <li key={directory.value}>
-          <Icons.folder aria-hidden="true" size={16} />
-          <span>{directory.value}</span>
+          <NavLink
+            className="link-button"
+            to={`/bundle/${bundle.source.id}/source?${new URLSearchParams({ dir: directory.value })}`}
+          >
+            <Icons.folder aria-hidden="true" size={16} />
+            {directory.value}
+          </NavLink>
           <Badge tone="muted">{directory.count}</Badge>
         </li>
       ))}
@@ -1006,28 +1011,72 @@ function ValidationView({ bundle }: { bundle: BundleSnapshot }) {
   );
 }
 
+interface SourceContextFile {
+  path: string;
+  directory: string;
+  kind: string;
+  body: string;
+  raw: string;
+  headings: Array<{ line: number; text: string }>;
+  indexEntries?: Array<{ line: number; href: string; section: string; title: string }>;
+  logEntries?: Array<{ line: number; text: string; date: string }>;
+}
+
 function SourceContextView({ bundle }: { bundle: BundleSnapshot }) {
-  const files = [...bundle.reservedFiles, ...bundle.auxiliaryFiles];
-  const [selectedPath, setSelectedPath] = useState(files[0]?.path ?? "");
-  const selected = files.find((file) => file.path === selectedPath);
+  const [params, setParams] = useSearchParams();
+  const selectedDirectory = params.get("dir") ?? "";
+  const selectedPath = params.get("file") ?? "";
+  const files: SourceContextFile[] = [
+    ...bundle.concepts.map((concept) => ({
+      path: concept.path,
+      directory: concept.directory || "bundle root",
+      kind: concept.type ?? "concept",
+      body: concept.body,
+      raw: concept.raw,
+      headings: concept.headings,
+    })),
+    ...bundle.reservedFiles.map((file) => ({
+      path: file.path,
+      directory: file.directory || "bundle root",
+      kind: file.kind,
+      body: file.body,
+      raw: file.raw,
+      headings: file.headings,
+      indexEntries: file.indexEntries,
+      logEntries: file.logEntries,
+    })),
+    ...bundle.auxiliaryFiles.map((file) => ({
+      path: file.path,
+      directory: file.directory || "bundle root",
+      kind: "auxiliary",
+      body: file.body,
+      raw: file.raw,
+      headings: file.headings,
+    })),
+  ].sort((left, right) => left.path.localeCompare(right.path));
+  const visibleFiles = selectedDirectory
+    ? files.filter((file) => file.directory === selectedDirectory)
+    : files;
+  const selected =
+    visibleFiles.find((file) => file.path === selectedPath) ?? visibleFiles[0] ?? undefined;
+
+  function selectFile(file: SourceContextFile) {
+    setParams(new URLSearchParams({ dir: file.directory, file: file.path }));
+  }
+
   return (
     <section className="source-context-grid">
-      <Card title="Source Context Files">
+      <Card title={selectedDirectory ? `Source Files: ${selectedDirectory}` : "Source Files"}>
         <ul className="tree-list">
-          {files.map((file) => (
+          {visibleFiles.map((file) => (
             <li key={file.path}>
-              <button
-                className="link-button"
-                onClick={() => setSelectedPath(file.path)}
-                type="button"
-              >
+              <button className="link-button" onClick={() => selectFile(file)} type="button">
                 <Icons.file aria-hidden="true" size={16} /> {file.path}
               </button>
-              <Badge tone={file.kind === "README" ? "violet" : "primary"}>
-                {file.kind === "README" ? "auxiliary" : file.kind}
-              </Badge>
+              <Badge tone={file.kind === "auxiliary" ? "violet" : "primary"}>{file.kind}</Badge>
             </li>
           ))}
+          {visibleFiles.length === 0 ? <li>No Markdown files found in this folder.</li> : null}
         </ul>
       </Card>
       <Card title={selected?.path ?? "No source context"}>
@@ -1037,14 +1086,19 @@ function SourceContextView({ bundle }: { bundle: BundleSnapshot }) {
       </Card>
       <Card title="Parsed Outline">
         <ul className="compact-list">
-          {selected && "indexEntries" in selected
+          {selected
+            ? selected.headings.map((heading) => (
+                <li key={`heading:${heading.line}`}>Heading: {heading.text}</li>
+              ))
+            : null}
+          {selected?.indexEntries
             ? selected.indexEntries.map((entry) => (
                 <li key={`${entry.line}:${entry.href}`}>
                   {entry.section}: {entry.title}
                 </li>
               ))
             : null}
-          {selected && "logEntries" in selected
+          {selected?.logEntries
             ? selected.logEntries.map((entry) => (
                 <li key={`${entry.line}:${entry.text}`}>
                   {entry.date}: {entry.text}

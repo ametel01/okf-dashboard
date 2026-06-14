@@ -33,6 +33,10 @@ test.describe("OKF Dashboard rendered UI", () => {
       fullPage: true,
     });
 
+    await page.getByRole("link", { name: "tables" }).click();
+    await expect(page.getByRole("heading", { name: "Source Files: tables" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /tables\/orders\.md/u })).toBeVisible();
+
     await page.getByRole("link", { name: "Concepts" }).first().click();
     await expect(page.getByRole("heading", { name: /Concepts/u })).toBeVisible();
     await page.getByRole("link", { name: "Orders" }).first().click();
