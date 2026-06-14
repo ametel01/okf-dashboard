@@ -164,8 +164,8 @@
 .distribution-grid {
   display: grid;
   grid-template-areas:
-    "donut types"
-    "donut tags";
+    "pie types"
+    "pie tags";
   grid-template-columns: 124px minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
@@ -179,19 +179,13 @@
   grid-area: tags;
 }
 
-.donut {
-  grid-area: donut;
+.pie-chart {
+  grid-area: pie;
   width: 112px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: conic-gradient(
-    #3b82f6 0 28%,
-    #16a34a 28% 46%,
-    #eab308 46% 61%,
-    #8b5cf6 61% 78%,
-    #94a3b8 78%
-  );
-  box-shadow: inset 0 0 0 28px white;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), var(--shadow-card);
 }
 
 .bar-list {
@@ -376,6 +370,7 @@
 
 .graph-panel {
   min-height: 320px;
+  overflow: hidden;
 }
 
 .graph-svg {
@@ -384,35 +379,66 @@
 }
 
 .graph-edge {
+  fill: none;
   stroke: var(--graph-edge);
-  stroke-width: 1.4;
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  opacity: 0.58;
+  vector-effect: non-scaling-stroke;
 }
 
 .graph-edge-unresolved {
   stroke: var(--graph-unresolved);
-  stroke-dasharray: 4 4;
+  stroke-dasharray: 5 5;
+  opacity: 0.72;
 }
 
 .graph-node {
-  fill: var(--graph-concept);
   stroke: white;
   stroke-width: 2;
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.14));
+}
+
+.graph-node-concept {
+  fill: var(--graph-concept);
+}
+
+.graph-node-guide {
+  fill: var(--graph-guide);
+}
+
+.graph-node-practice {
+  fill: var(--graph-practice);
+}
+
+.graph-node-other {
+  fill: var(--graph-other);
 }
 
 .graph-node-unresolved {
   fill: white;
   stroke: var(--graph-unresolved);
-  stroke-dasharray: 4 3;
+  stroke-width: 2.4;
+  stroke-dasharray: 5 4;
+  filter: none;
 }
 
 .graph-label {
-  fill: var(--color-text-muted);
-  font-size: 10px;
+  fill: var(--color-text);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 4px;
+  stroke-linejoin: round;
   text-anchor: middle;
+  pointer-events: none;
 }
 
 .graph-node-hit {
-  display: none;
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
 }
 
 .validation-strip {

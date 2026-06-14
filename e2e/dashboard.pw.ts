@@ -18,6 +18,7 @@ test.describe("OKF Dashboard rendered UI", () => {
     await expect(page.getByRole("heading", { name: "minimal-okf" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Bundle Summary" })).toBeVisible();
     await expect(page.locator(".metric-label").filter({ hasText: "Markdown Files" })).toBeVisible();
+    await expect(page.getByLabel("Type distribution pie chart")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Knowledge Graph" })).toBeVisible();
     await expect(page.locator(".app-sidebar")).toBeVisible();
     await expect(page.locator(".overview-grid")).toHaveCSS("display", "grid");

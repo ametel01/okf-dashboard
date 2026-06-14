@@ -526,11 +526,16 @@ function Metric({
 }
 
 function Distribution({ bundle }: { bundle: BundleSnapshot }) {
+  const typeFacets = bundle.facets.types.slice(0, 8);
   return (
     <div className="distribution-grid">
-      <div className="donut" aria-label="Type distribution" />
+      <div
+        className="pie-chart"
+        aria-label="Type distribution pie chart"
+        style={{ background: pieGradient(typeFacets) }}
+      />
       <div className="bar-list">
-        {bundle.facets.types.slice(0, 8).map((facet) => (
+        {typeFacets.map((facet) => (
           <div className="bar-row" key={facet.value}>
             <span>{facet.value}</span>
             <i
@@ -557,6 +562,21 @@ function Distribution({ bundle }: { bundle: BundleSnapshot }) {
       </div>
     </div>
   );
+}
+
+const PIE_COLORS = ["#3b82f6", "#16a34a", "#eab308", "#8b5cf6", "#06b6d4", "#f97316", "#94a3b8"];
+
+function pieGradient(facets: Array<{ value: string; count: number }>): string {
+  const total = facets.reduce((sum, facet) => sum + facet.count, 0);
+  if (total === 0) return "#e2e8f0";
+  let cursor = 0;
+  const segments = facets.map((facet, index) => {
+    const start = cursor;
+    cursor += (facet.count / total) * 100;
+    const color = PIE_COLORS[index % PIE_COLORS.length];
+    return `${color} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
+  });
+  return `conic-gradient(${segments.join(", ")})`;
 }
 
 function ActivityList({ bundle }: { bundle: BundleSnapshot }) {
