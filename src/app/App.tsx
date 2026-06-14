@@ -527,53 +527,76 @@ function Metric({
 
 function Distribution({ bundle }: { bundle: BundleSnapshot }) {
   const typeFacets = bundle.facets.types.slice(0, 8);
+  const tagFacets = bundle.facets.tags.slice(0, 10);
+  const typeTotal = Math.max(
+    1,
+    bundle.facets.types.reduce((sum, facet) => sum + facet.count, 0),
+  );
+  const maxTagCount = Math.max(1, ...tagFacets.map((facet) => facet.count));
   return (
     <div className="distribution-grid">
-      <div
-        className="pie-chart"
-        aria-label="Type distribution pie chart"
-        style={{ background: pieGradient(typeFacets) }}
-      />
-      <div className="bar-list">
-        {typeFacets.map((facet) => (
-          <div className="bar-row" key={facet.value}>
-            <span>{facet.value}</span>
-            <i
-              style={{
-                width: `${Math.max(8, (facet.count / Math.max(1, bundle.metrics.concepts)) * 100)}%`,
-              }}
-            />
-            <strong>{facet.count}</strong>
+      <div className="distribution-types">
+        <h3>By Type (Top 8)</h3>
+        <div className="type-distribution-body">
+          <div
+            className="donut-chart"
+            aria-label="Type distribution donut chart"
+            style={{ background: distributionGradient(typeFacets, typeTotal) }}
+          />
+          <div className="legend-list">
+            {typeFacets.map((facet, index) => (
+              <div className="legend-row" key={facet.value}>
+                <span
+                  className="legend-swatch"
+                  style={{ background: DISTRIBUTION_COLORS[index % DISTRIBUTION_COLORS.length] }}
+                />
+                <span>{facet.value}</span>
+                <strong>{Math.round((facet.count / typeTotal) * 100)}%</strong>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
-      <div className="bar-list">
-        {bundle.facets.tags.slice(0, 8).map((facet) => (
-          <div className="bar-row" key={facet.value}>
-            <span>{facet.value}</span>
-            <i
-              style={{
-                width: `${Math.max(8, (facet.count / Math.max(1, bundle.metrics.concepts)) * 100)}%`,
-              }}
-            />
-            <strong>{facet.count}</strong>
-          </div>
-        ))}
+      <div className="distribution-tags">
+        <h3>By Tags (Top 10)</h3>
+        <div className="bar-list">
+          {tagFacets.map((facet) => (
+            <div className="bar-row" key={facet.value}>
+              <span>{facet.value}</span>
+              <i
+                style={{
+                  width: `${Math.max(14, (facet.count / maxTagCount) * 100)}%`,
+                }}
+              />
+              <strong>{facet.count}</strong>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-const PIE_COLORS = ["#3b82f6", "#16a34a", "#eab308", "#8b5cf6", "#06b6d4", "#f97316", "#94a3b8"];
+const DISTRIBUTION_COLORS = [
+  "#3b82f6",
+  "#38bdf8",
+  "#73b66b",
+  "#f87171",
+  "#fb923c",
+  "#22c55e",
+  "#8b5cf6",
+  "#94a3b8",
+];
 
-function pieGradient(facets: Array<{ value: string; count: number }>): string {
-  const total = facets.reduce((sum, facet) => sum + facet.count, 0);
-  if (total === 0) return "#e2e8f0";
+function distributionGradient(
+  facets: Array<{ value: string; count: number }>,
+  total: number,
+): string {
   let cursor = 0;
   const segments = facets.map((facet, index) => {
     const start = cursor;
     cursor += (facet.count / total) * 100;
-    const color = PIE_COLORS[index % PIE_COLORS.length];
+    const color = DISTRIBUTION_COLORS[index % DISTRIBUTION_COLORS.length];
     return `${color} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
   });
   return `conic-gradient(${segments.join(", ")})`;
