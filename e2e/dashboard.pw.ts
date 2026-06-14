@@ -33,6 +33,12 @@ test.describe("OKF Dashboard rendered UI", () => {
       fullPage: true,
     });
 
+    await page.getByRole("link", { name: /Warnings\s+1/u }).click();
+    await expect(page).toHaveURL(/\/validation\?severity=warning/u);
+    await expect(page.getByLabel("Severity")).toHaveValue("warning");
+    await expect(page.getByRole("heading", { name: "1 Findings" })).toBeVisible();
+
+    await page.getByRole("link", { name: "Overview" }).first().click();
     await page.getByRole("link", { name: "tables" }).click();
     await expect(page.getByRole("heading", { name: "Source Files: tables" })).toBeVisible();
     await expect(page.getByRole("button", { name: /tables\/orders\.md/u })).toBeVisible();

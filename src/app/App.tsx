@@ -961,10 +961,17 @@ function GraphView({ bundle }: { bundle: BundleSnapshot }) {
 }
 
 function ValidationView({ bundle }: { bundle: BundleSnapshot }) {
-  const [severity, setSeverity] = useState<FindingSeverity | "">("");
+  const [params, setParams] = useSearchParams();
+  const severity = parseSeverity(params.get("severity"));
   const findings = severity
     ? bundle.findings.filter((finding) => finding.severity === severity)
     : bundle.findings;
+  function updateSeverity(value: FindingSeverity | "") {
+    const next = new URLSearchParams(params);
+    if (value) next.set("severity", value);
+    else next.delete("severity");
+    setParams(next);
+  }
   return (
     <section className="stack">
       <ValidationStrip bundle={bundle} />
@@ -973,7 +980,7 @@ function ValidationView({ bundle }: { bundle: BundleSnapshot }) {
           className="select"
           aria-label="Severity"
           value={severity}
-          onChange={(event) => setSeverity(event.target.value as FindingSeverity | "")}
+          onChange={(event) => updateSeverity(event.target.value as FindingSeverity | "")}
         >
           <option value="">All severities</option>
           <option value="error">Errors</option>
@@ -1009,6 +1016,11 @@ function ValidationView({ bundle }: { bundle: BundleSnapshot }) {
       </Card>
     </section>
   );
+}
+
+function parseSeverity(value: string | null): FindingSeverity | "" {
+  if (value === "error" || value === "warning" || value === "info") return value;
+  return "";
 }
 
 interface SourceContextFile {
@@ -1117,30 +1129,56 @@ function ValidationStrip({
   concept,
 }: { bundle: BundleSnapshot; concept?: ConceptDocument }) {
   const findings = concept?.findings ?? bundle.findings;
+  const validationBasePath = `/bundle/${bundle.source.id}/validation`;
   return (
     <section className="card validation-strip" aria-label="Validation summary">
       <div className="card-body validation-metrics">
-        <Metric
+        <ValidationMetricLink
           icon={Icons.x}
           label="Errors"
+          to={`${validationBasePath}?severity=error`}
           value={findings.filter((finding) => finding.severity === "error").length}
         />
-        <Metric
+        <ValidationMetricLink
           icon={Icons.alert}
           label="Warnings"
+          to={`${validationBasePath}?severity=warning`}
           value={findings.filter((finding) => finding.severity === "warning").length}
         />
-        <Metric
+        <ValidationMetricLink
           icon={Icons.help}
           label="Info"
+          to={`${validationBasePath}?severity=info`}
           value={findings.filter((finding) => finding.severity === "info").length}
         />
-        <Metric
+        <ValidationMetricLink
           icon={Icons.check}
           label="Passed Checks"
+          to={validationBasePath}
           value={concept ? Math.max(0, 4 - findings.length) : bundle.metrics.passed}
         />
       </div>
     </section>
+  );
+}
+
+function ValidationMetricLink({
+  icon: Icon,
+  label,
+  value,
+  to,
+}: {
+  icon: typeof Icons.file;
+  label: string;
+  value: number | string;
+  to: string;
+}) {
+  return (
+    <NavLink className="metric-tile validation-metric-link" to={to}>
+      <span className="metric-label">
+        <Icon aria-hidden="true" size={16} /> {label}
+      </span>
+      <strong className="metric-value">{value}</strong>
+    </NavLink>
   );
 }
