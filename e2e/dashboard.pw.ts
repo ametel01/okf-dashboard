@@ -10,7 +10,7 @@ test.describe("OKF Dashboard rendered UI", () => {
   }, testInfo) => {
     test.skip(!testInfo.project.name.includes("desktop"), "Desktop layout coverage");
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Choose Folder" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Choose Folder" })).toBeEnabled();
     await expect(page.getByLabel("Or enter a server-readable bundle path")).toHaveValue("");
     await page.getByLabel("Or enter a server-readable bundle path").fill(fixturePath);
     await page.getByRole("button", { name: "Load Path" }).click();
@@ -48,7 +48,7 @@ test.describe("OKF Dashboard rendered UI", () => {
   test("keeps core dashboard views usable on mobile", async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes("mobile"), "Mobile layout coverage");
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Choose Folder" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Choose Folder" })).toBeEnabled();
     await expect(page.getByLabel("Or enter a server-readable bundle path")).toHaveValue("");
     await page.getByLabel("Or enter a server-readable bundle path").fill(fixturePath);
     await page.getByRole("button", { name: "Load Path" }).click();

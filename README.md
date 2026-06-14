@@ -82,7 +82,7 @@ After opening the dashboard, click **Choose Folder** and select an OKF bundle di
 
 This uses your browser's local folder picker. The dashboard reads Markdown files from the selected folder in the browser session and does not require the bundle to live inside this repository.
 
-If your browser does not support direct folder selection, use the fallback path field. The fallback path must be readable by the Bun server process.
+If your browser does not support the native local folder picker, the same button falls back to a browser file selection flow. You can also use the fallback path field. The fallback path must be readable by the Bun server process.
 
 ## Load the Included Fixture Bundle
 
@@ -182,9 +182,11 @@ Check that:
 - the path points to a directory containing Markdown files
 - symlinked Markdown files are expected to be skipped
 
-### The Choose Folder button is disabled
+### The folder picker does not open
 
-Your browser does not expose a local directory picker to web apps. Use the fallback path field with `bun run server:dev`, or open the app in a Chromium-based browser on `localhost`.
+The **Choose Folder** button should stay clickable. If your browser does not expose a native local directory picker, it falls back to a browser file selection flow.
+
+If no picker appears, use the fallback path field with `bun run server:dev`, or open the app in a Chromium-based browser on `localhost`.
 
 ### Playwright says Chromium is missing
 

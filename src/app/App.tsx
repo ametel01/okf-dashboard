@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   NavLink,
   Navigate,
@@ -21,7 +21,11 @@ import { GraphCanvas } from "./components/GraphCanvas";
 import { Icons } from "./components/Icons";
 import { MarkdownPanel } from "./components/MarkdownPanel";
 import { clearBundleCache, loadGitHubBundle, loadLocalBundle, refreshLocalBundle } from "./lib/api";
-import { isDirectoryPickerSupported, loadBrowserDirectoryBundle } from "./lib/browser-source";
+import {
+  isDirectoryPickerSupported,
+  loadBrowserDirectoryBundle,
+  loadBrowserFileList,
+} from "./lib/browser-source";
 import { conceptTitle, formatDate, severityBadge, valueLabel } from "./lib/format";
 
 export default function App() {
@@ -44,6 +48,23 @@ export default function App() {
       navigate(`/bundle/${loaded.snapshot.source.id}`);
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+      setError(loadError instanceof Error ? loadError.message : "Folder could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadSelectedFolderFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const loaded = await loadBrowserFileList(files);
+      setBrowserReload(() => loaded.reload);
+      setPath("");
+      setBundle(loaded.snapshot);
+      navigate(`/bundle/${loaded.snapshot.source.id}`);
+    } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Folder could not be loaded.");
     } finally {
       setLoading(false);
@@ -178,6 +199,7 @@ export default function App() {
                   setPath={setPath}
                   onClearCache={clearCache}
                   onChooseFolder={chooseLocalFolder}
+                  onFolderFilesSelected={loadSelectedFolderFiles}
                   onLoad={runLoad}
                 />
               }
@@ -218,9 +240,13 @@ function HomePage(props: {
   error?: string;
   pickerSupported: boolean;
   onChooseFolder: () => void;
+  onFolderFilesSelected: (files: FileList | null) => void;
   onLoad: (source: "local" | "github") => void;
   onClearCache: () => void;
 }) {
+  const fallbackFolderInputRef = useRef<HTMLInputElement | null>(null);
+  const directoryInputProps = { directory: "", webkitdirectory: "" };
+
   return (
     <>
       <PageHeader
@@ -233,14 +259,20 @@ function HomePage(props: {
           <div className="card-header">
             <h2>Local Source</h2>
             <Badge tone={props.pickerSupported ? "success" : "warning"}>
-              {props.pickerSupported ? "Folder picker" : "Path fallback"}
+              {props.pickerSupported ? "Folder picker" : "File picker"}
             </Badge>
           </div>
           <div className="card-body stack">
             <button
               className="button button-primary"
-              disabled={props.loading || !props.pickerSupported}
-              onClick={props.onChooseFolder}
+              disabled={props.loading}
+              onClick={() => {
+                if (props.pickerSupported) {
+                  props.onChooseFolder();
+                } else {
+                  fallbackFolderInputRef.current?.click();
+                }
+              }}
               type="button"
             >
               {props.loading ? (
@@ -250,6 +282,17 @@ function HomePage(props: {
               )}
               Choose Folder
             </button>
+            <input
+              ref={fallbackFolderInputRef}
+              className="visually-hidden"
+              type="file"
+              multiple
+              onChange={(event) => {
+                props.onFolderFilesSelected(event.currentTarget.files);
+                event.currentTarget.value = "";
+              }}
+              {...directoryInputProps}
+            />
             <label className="field-label" htmlFor="local-path">
               Or enter a server-readable bundle path
             </label>
